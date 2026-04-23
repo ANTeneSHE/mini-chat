@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mini Chat</title>
+  <style>
+    body { font-family: Arial; max-width: 600px; margin: 40px auto; }
+    #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; }
+    input { width: 80%; padding: 10px; }
+    button { padding: 10px; }
+  </style>
+</head>
+<body>
+
+<h2>Мини чат</h2>
+
+<div id="messages"></div>
+
+<input id="input" placeholder="Сообщение..." />
+<button onclick="sendMessage()">Отправить</button>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="client.js"></script>
+
+</body>
+</html>

@@ -13,8 +13,16 @@ app.use(express.static("public"));
 io.on("connection", (socket) => {
   console.log("Пользователь подключился");
 
+  // сохраняем имя пользователя в socket
+  socket.on("join", (username) => {
+    socket.username = username;
+  });
+
   socket.on("message", (msg) => {
-    io.emit("message", msg);
+    io.emit("message", {
+      user: socket.username || "Аноним",
+      text: msg.text
+    });
   });
 
   socket.on("disconnect", () => {

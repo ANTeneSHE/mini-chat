@@ -36,6 +36,17 @@ socket.on("history", (history) => {
   history.forEach(renderMessage);
 });
 
+socket.on("message", (data) => {
+  renderMessage(data);
+
+  console.log("TEST MESSAGE:", data);
+
+  new Notification("ТЕСТ УВЕДОМЛЕНИЯ", {
+    body: data.text
+  });
+});
+
+/*
 // новые сообщения
 socket.on("message", (data) => {
   renderMessage(data);
@@ -57,6 +68,7 @@ socket.on("message", (data) => {
     };
   }
 });
+*/
 
 function sendMessage() {
   const msg = input.value;

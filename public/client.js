@@ -1,5 +1,9 @@
 const socket = io(window.location.origin);
 
+if ("Notification" in window) {
+  Notification.requestPermission();
+}
+
 const username = prompt("Введи своё имя:");
 
 const input = document.getElementById("input");
@@ -33,7 +37,26 @@ socket.on("history", (history) => {
 });
 
 // новые сообщения
-socket.on("message", renderMessage);
+socket.on("message", (data) => {
+  renderMessage(data);
+
+  // не уведомляем о своих сообщениях
+  if (data.user === username) return;
+
+  // не показываем, если вкладка активна
+  if (document.visibilityState === "visible") return;
+
+  // показываем уведомление
+  if (Notification.permission === "granted") {
+    const notification = new Notification(`Новое сообщение от ${data.user}`, {
+      body: data.text
+    });
+
+    notification.onclick = () => {
+      window.focus();
+    };
+  }
+});
 
 function sendMessage() {
   const msg = input.value;

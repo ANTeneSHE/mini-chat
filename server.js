@@ -1,7 +1,7 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const fs = require("fs");
+const sqlite3 = require("sqlite3").verbose();
 
 const app = express();
 const server = http.createServer(app);
@@ -9,17 +9,18 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-const MESSAGES_FILE = "./messages.json";
+// подключение к базе
+const db = new sqlite3.Database("./chat.db");
 
-// загрузка истории
-let messages = [];
-if (fs.existsSync(MESSAGES_FILE)) {
-  messages = JSON.parse(fs.readFileSync(MESSAGES_FILE, "utf-8"));
-}
-
-function saveMessages() {
-  fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
-}
+// создаём таблицу, если нет
+db.run(`
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user TEXT,
+    text TEXT,
+    time TEXT
+  )
+`);
 
 io.on("connection", (socket) => {
   console.log("Пользователь подключился");
@@ -27,34 +28,53 @@ io.on("connection", (socket) => {
   socket.on("join", (username) => {
     socket.username = username;
 
-    // отправляем историю новому пользователю
-    socket.emit("history", messages);
+    // отправляем историю из базы
+    db.all("SELECT * FROM messages ORDER BY id ASC", [], (err, rows) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+      socket.emit("history", rows);
+    });
   });
 
   socket.on("message", (msg) => {
-  const now = new Date();
+    const now = new Date();
 
-  const mskTime = new Intl.DateTimeFormat("ru-RU", {
-    timeZone: "Europe/Moscow",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    year: "2-digit",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(now);
+    const mskTime = new Intl.DateTimeFormat("ru-RU", {
+      timeZone: "Europe/Moscow",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      year: "2-digit",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(now);
 
-  const fullMessage = {
-    user: socket.username || "Аноним",
-    text: msg.text,
-    time: mskTime
-  };
+    const user = socket.username || "Аноним";
+    const text = msg.text;
 
-  messages.push(fullMessage);
-  saveMessages();
+    // сохраняем в базу
+    db.run(
+      "INSERT INTO messages (user, text, time) VALUES (?, ?, ?)",
+      [user, text, mskTime],
+      function (err) {
+        if (err) {
+          console.error(err);
+          return;
+        }
 
-  io.emit("message", fullMessage);
-});
+        const fullMessage = {
+          id: this.lastID,
+          user,
+          text,
+          time: mskTime
+        };
+
+        io.emit("message", fullMessage);
+      }
+    );
+  });
 
   socket.on("disconnect", () => {
     console.log("Пользователь отключился");
